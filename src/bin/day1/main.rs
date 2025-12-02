@@ -1,10 +1,23 @@
-use std::{ops::Add, str::FromStr};
+use std::str::FromStr;
 
-use nom::combinator::Opt;
+fn main() -> Result<(), MyError> {
+    let input = "L68\nL30\nR48\nL5\nR60\nL55\nL1\nL99\nR14\nL82";
+    let mut dial = RotaryDial::new(100, 50);
 
-fn main() {}
+    let out: usize = input
+        .lines()
+        .filter_map(|action| action.parse::<Action>().ok())
+        .inspect(|a| print!("{:?}", a))
+        .map(|a| dial.turn(a))
+        .inspect(|a| println!(" = {a}"))
+        .filter(|a| *a == 0)
+        .count();
+    println!("{:?}", out);
 
-type STEPS = u16;
+    Ok(())
+}
+
+type STEPS = i16;
 
 #[derive(Debug)]
 struct MyError(String);
@@ -53,25 +66,25 @@ impl FromStr for Action {
 #[derive(Debug)]
 struct RotaryDial {
     perimeter: STEPS,
-    pointer: STEPS,
+    start: STEPS,
+    accum: STEPS,
 }
 
 impl RotaryDial {
-    fn new(perimeter: STEPS, pointer: STEPS) -> RotaryDial {
-        RotaryDial { perimeter, pointer }
+    fn new(perimeter: STEPS, start: STEPS) -> RotaryDial {
+        RotaryDial {
+            perimeter,
+            start,
+            accum: 0,
+        }
     }
-    fn dial_left(&self, steps: STEPS) -> STEPS {
-        self.perimeter + self.pointer - steps % self.perimeter
-    }
-    fn dial_right(&self, steps: STEPS) -> STEPS {
-        self.perimeter - self.pointer + steps % self.perimeter
-    }
-    fn turn_and_listen(&mut self, act: Action) -> bool {
-        self.pointer = match act.turn {
-            Turn::Left => self.dial_left(act.steps),
-            Turn::Right => self.dial_right(act.steps),
+    fn turn(&mut self, act: Action) -> STEPS {
+        self.accum = match act.turn {
+            Turn::Left => self.accum + act.steps,
+            Turn::Right => self.accum - act.steps,
         };
-        if self.pointer == 0 { true } else { false }
+        print!(" ({}) ", self.accum);
+        self.start - self.accum % self.perimeter
     }
 }
 
@@ -83,9 +96,27 @@ mod test {
     fn test_add() {
         let mut dial = RotaryDial::new(100, 50);
 
-        println!("L68 {:?}", dial.dial_left(68));
-        println!("L30 {:?}", dial.dial_left(30));
-        println!("R48 {:?}", dial.dial_right(48));
+        println!(
+            "L68 {:?}",
+            dial.turn(Action {
+                turn: Turn::Left,
+                steps: 68
+            })
+        );
+        println!(
+            "L30 {:?}",
+            dial.turn(Action {
+                turn: Turn::Left,
+                steps: 30
+            })
+        );
+        println!(
+            "L48 {:?}",
+            dial.turn(Action {
+                turn: Turn::Right,
+                steps: 48
+            })
+        );
     }
 
     #[test]
