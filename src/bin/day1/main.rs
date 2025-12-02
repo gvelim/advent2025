@@ -1,12 +1,17 @@
 use std::str::FromStr;
 
 fn main() -> Result<(), MyError> {
-    let input = "L68\nL30\nR48\nL5\nR60\nL55\nL1\nL99\nR14\nL82";
+    let input = std::fs::read_to_string("src/bin/day1/sample.txt").expect("file not found");
     let mut dial = RotaryDial::new(100, 50);
 
     let out: usize = input
         .lines()
-        .filter_map(|action| action.parse::<Action>().ok())
+        .map(|action| {
+            action
+                .parse::<Action>()
+                .map_err(|e| panic!("{:?}", e.0))
+                .unwrap()
+        })
         .inspect(|a| print!("{:?}", a))
         .map(|a| dial.turn(a))
         .inspect(|a| println!(" = {a}"))
@@ -17,7 +22,7 @@ fn main() -> Result<(), MyError> {
     Ok(())
 }
 
-type STEPS = i16;
+type Steps = i16;
 
 #[derive(Debug)]
 struct MyError(String);
@@ -31,7 +36,7 @@ enum Turn {
 #[derive(Debug)]
 struct Action {
     turn: Turn,
-    steps: STEPS,
+    steps: Steps,
 }
 
 impl FromStr for Turn {
@@ -52,7 +57,7 @@ impl FromStr for Action {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Action {
             turn: s[..1].parse::<Turn>()?,
-            steps: STEPS::from_str(&s[1..]).map_err(|_| {
+            steps: Steps::from_str(&s[1..]).map_err(|_| {
                 MyError(
                     format!("cannot input {} to u8", &s[1..])
                         .as_str()
@@ -65,26 +70,26 @@ impl FromStr for Action {
 
 #[derive(Debug)]
 struct RotaryDial {
-    perimeter: STEPS,
-    start: STEPS,
-    accum: STEPS,
+    perimeter: Steps,
+    start: Steps,
+    accum: Steps,
 }
 
 impl RotaryDial {
-    fn new(perimeter: STEPS, start: STEPS) -> RotaryDial {
+    fn new(perimeter: Steps, start: Steps) -> RotaryDial {
         RotaryDial {
             perimeter,
             start,
             accum: 0,
         }
     }
-    fn turn(&mut self, act: Action) -> STEPS {
-        self.accum = match act.turn {
-            Turn::Left => self.accum + act.steps,
-            Turn::Right => self.accum - act.steps,
+    fn turn(&mut self, act: Action) -> Steps {
+        self.accum += match act.turn {
+            Turn::Left => -act.steps,
+            Turn::Right => act.steps,
         };
         print!(" ({}) ", self.accum);
-        self.start - self.accum % self.perimeter
+        self.start + self.accum % self.perimeter
     }
 }
 
