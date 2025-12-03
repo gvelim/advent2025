@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
     let input = std::fs::read_to_string("src/bin/day1/sample.txt").expect("file not found");
@@ -9,11 +10,11 @@ fn main() -> Result<(), MyError> {
         .map(|action| {
             action
                 .parse::<Action>()
-                .map_err(|e| panic!("{:?}", e.0))
+                .map_err(|e| panic!("{e:?}"))
                 .unwrap()
         })
         .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.turn(a))
+        .map(|a| dial.turn(&a))
         .inspect(|a| println!(" = {a}"))
         .filter(|a| *a == 0)
         .count();
@@ -24,16 +25,21 @@ fn main() -> Result<(), MyError> {
 
 type Steps = i16;
 
-#[derive(Debug)]
-struct MyError(String);
+#[derive(Debug, Error, PartialEq)]
+enum MyError {
+    #[error("Cannot parse turn letter")]
+    InvalidTurn = 0,
+    #[error("Cannot parse step count")]
+    InvalidStep = 1,
+}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Turn {
     Left,
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Action {
     turn: Turn,
     steps: Steps,
@@ -46,7 +52,7 @@ impl FromStr for Turn {
         match s {
             "L" => Ok(Turn::Left),
             "R" => Ok(Turn::Right),
-            _ => Err(MyError("Input isn't \"L\" or \"R\"".to_string())),
+            _ => Err(MyError::InvalidTurn),
         }
     }
 }
@@ -57,13 +63,7 @@ impl FromStr for Action {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Action {
             turn: s[..1].parse::<Turn>()?,
-            steps: Steps::from_str(&s[1..]).map_err(|_| {
-                MyError(
-                    format!("cannot input {} to u8", &s[1..])
-                        .as_str()
-                        .to_owned(),
-                )
-            })?,
+            steps: Steps::from_str(&s[1..]).map_err(|_| MyError::InvalidStep)?,
         })
     }
 }
@@ -83,12 +83,11 @@ impl RotaryDial {
             accum: 0,
         }
     }
-    fn turn(&mut self, act: Action) -> Steps {
+    fn turn(&mut self, act: &Action) -> Steps {
         self.accum += match act.turn {
             Turn::Left => -act.steps,
             Turn::Right => act.steps,
         };
-        print!(" ({}) ", self.accum);
         self.start + self.accum % self.perimeter
     }
 }
@@ -100,38 +99,35 @@ mod test {
     #[test]
     fn test_add() {
         let mut dial = RotaryDial::new(100, 50);
-
-        println!(
-            "L68 {:?}",
-            dial.turn(Action {
+        let data = [
+            Action {
                 turn: Turn::Left,
-                steps: 68
-            })
-        );
-        println!(
-            "L30 {:?}",
-            dial.turn(Action {
+                steps: 68,
+            },
+            Action {
                 turn: Turn::Left,
-                steps: 30
-            })
-        );
-        println!(
-            "L48 {:?}",
-            dial.turn(Action {
+                steps: 30,
+            },
+            Action {
                 turn: Turn::Right,
-                steps: 48
-            })
-        );
+                steps: 48,
+            },
+        ];
+        for a in data {
+            println!("{:?}{:?} {:?}", a.turn, a.steps, dial.turn(&a));
+        }
     }
 
     #[test]
     fn test_parse_input() {
-        let input = "L68\nL30\nR48\nL5\nR60\nL55\nL1\nL99\nR14\nL82";
-
-        let out = input
-            .lines()
-            .map(|action| action.parse::<Action>())
-            .collect::<Result<Vec<_>, _>>();
-        println!("{:?}", out);
+        assert_eq!(
+            "L68".parse::<Action>(),
+            Ok(Action {
+                turn: Turn::Left,
+                steps: 68
+            })
+        );
+        assert_eq!("E68".parse::<Action>(), Err(MyError::InvalidTurn));
+        assert_eq!("LA8".parse::<Action>(), Err(MyError::InvalidStep));
     }
 }
