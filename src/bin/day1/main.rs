@@ -2,7 +2,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
-    let input = std::fs::read_to_string("src/bin/day1/sample.txt").expect("file not found");
+    let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
     let mut dial = RotaryDial::new(100, 50);
 
     let out: usize = input
@@ -33,10 +33,10 @@ enum MyError {
     InvalidStep = 1,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Turn {
-    Left,
-    Right,
+    Left = -1,
+    Right = 1,
 }
 
 #[derive(Debug, PartialEq)]
@@ -71,24 +71,20 @@ impl FromStr for Action {
 #[derive(Debug)]
 struct RotaryDial {
     perimeter: Steps,
-    start: Steps,
-    accum: Steps,
+    needle: Steps,
 }
 
 impl RotaryDial {
     fn new(perimeter: Steps, start: Steps) -> RotaryDial {
         RotaryDial {
             perimeter,
-            start,
-            accum: 0,
+            needle: start,
         }
     }
     fn turn(&mut self, act: &Action) -> Steps {
-        self.accum += match act.turn {
-            Turn::Left => -act.steps,
-            Turn::Right => act.steps,
-        };
-        self.start + self.accum % self.perimeter
+        self.needle = (self.needle + (act.turn as Steps) * act.steps) % self.perimeter;
+        self.needle += if self.needle < 0 { 100 } else { 0 };
+        self.needle
     }
 }
 
