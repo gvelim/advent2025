@@ -4,21 +4,20 @@ use thiserror::Error;
 fn main() -> Result<(), MyError> {
     let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
     let mut dial = RotaryDial::new(100, 50);
-
-    let out: usize = input
+    let actions = input
         .lines()
-        .map(|action| {
-            action
-                .parse::<Action>()
-                .map_err(|e| panic!("{e:?}"))
-                .unwrap()
-        })
+        .map(|action| action.parse::<Action>())
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let out = actions
+        .into_iter()
         .inspect(|a| print!("{:?}", a))
         .map(|a| dial.turn(&a))
         .inspect(|a| println!(" = {a}"))
         .filter(|a| *a == 0)
         .count();
-    println!("{:?}", out);
+    println!("Part 1: {:?}", out);
+    assert_eq!(out, 969);
 
     Ok(())
 }
@@ -95,23 +94,28 @@ mod test {
     #[test]
     fn test_add() {
         let mut dial = RotaryDial::new(100, 50);
-        let data = [
-            Action {
+
+        assert_eq!(
+            dial.turn(&Action {
                 turn: Turn::Left,
                 steps: 68,
-            },
-            Action {
+            }),
+            82
+        );
+        assert_eq!(
+            dial.turn(&Action {
                 turn: Turn::Left,
                 steps: 30,
-            },
-            Action {
+            }),
+            52
+        );
+        assert_eq!(
+            dial.turn(&Action {
                 turn: Turn::Right,
                 steps: 48,
-            },
-        ];
-        for a in data {
-            println!("{:?}{:?} {:?}", a.turn, a.steps, dial.turn(&a));
-        }
+            }),
+            0
+        );
     }
 
     #[test]
