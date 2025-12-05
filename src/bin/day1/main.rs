@@ -2,7 +2,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
-    let input = std::fs::read_to_string("src/bin/day1/sample.txt").expect("file not found");
+    let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
     let mut dial = RotaryDial::new(100, 50);
     let actions = input
         .lines()
@@ -79,6 +79,7 @@ impl FromStr for Action {
 #[derive(Debug)]
 struct RotaryDial {
     perimeter: Steps,
+    cursor: Steps,
     needle: Steps,
 }
 
@@ -86,21 +87,38 @@ impl RotaryDial {
     fn new(perimeter: Steps, start: Steps) -> RotaryDial {
         RotaryDial {
             perimeter,
+            cursor: start,
             needle: start,
         }
     }
     fn turn(&mut self, act: &Action) -> Steps {
-        self.needle = (self.needle + (act.turn as Steps) * act.steps) % self.perimeter;
+        self.cursor = (self.cursor + (act.turn as Steps) * act.steps) % self.perimeter;
+        self.needle = self.cursor + if self.cursor < 0 { 100 } else { 0 };
         self.needle
     }
     fn zeros(&mut self, act: &Action) -> Steps {
-        let init = self.needle;
-        let n = self.turn(act);
-        print!(" {init} -> {n} ");
-        match (n, init.signum(), n.signum()) {
+        let RotaryDial {
+            perimeter,
+            cursor: last,
+            ..
+        } = *self;
+
+        self.turn(act);
+
+        let new = self.cursor;
+        let spanned = last.abs_diff(new) >= self.perimeter as u16;
+
+        print!(" {last} -> {} -> {new} ", act.steps);
+        match (new, last.signum(), new.signum()) {
+            // we've ended up on zero going over 0..* cycles
+            (0, _, _) if spanned => (last.abs() + act.steps) / perimeter,
             (0, _, _) => 1,
-            (_, -1, 1) => 1,
-            (_, 1, -1) => 1,
+            // we've crossed zero in 0..* cycles
+            (_, -1, 1) | (_, 1, -1) if spanned => (last.abs() + act.steps) / perimeter,
+            (_, -1, 1) | (_, 1, -1) => 1,
+            // we've travelled more than a dial's perimeter length
+            (_, _, _) if spanned => (last.abs() + act.steps) / perimeter,
+            // anything else
             (_, _, _) => 0,
         }
     }
@@ -113,21 +131,21 @@ mod test {
     #[test]
     fn test_zeros() {
         let mut dial = RotaryDial::new(100, 50);
-
-        assert_eq!(
-            dial.zeros(&Action {
-                turn: Turn::Left,
-                steps: 1000,
-            }),
-            10
-        );
-        assert_eq!(
-            dial.zeros(&Action {
-                turn: Turn::Right,
-                steps: 950,
-            }),
-            10
-        );
+        let mut res = dial.zeros(&Action {
+            turn: Turn::Left,
+            steps: 1000,
+        });
+        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
+        res = dial.zeros(&Action {
+            turn: Turn::Right,
+            steps: 950,
+        });
+        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
+        res = dial.zeros(&Action {
+            turn: Turn::Right,
+            steps: 1000,
+        });
+        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
     }
 
     #[test]
