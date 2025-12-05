@@ -2,7 +2,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
-    let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
+    let input = std::fs::read_to_string("src/bin/day1/sample.txt").expect("file not found");
     let mut dial = RotaryDial::new(100, 50);
     let actions = input
         .lines()
@@ -10,15 +10,24 @@ fn main() -> Result<(), MyError> {
         .collect::<Result<Vec<_>, _>>()?;
 
     let out = actions
-        .into_iter()
+        .iter()
         .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.turn(&a))
+        .map(|a| dial.turn(a))
         .inspect(|a| println!(" = {a}"))
         .filter(|a| *a == 0)
         .count();
     println!("Part 1: {:?}", out);
-    assert_eq!(out, 969);
+    // assert_eq!(out, 969);
 
+    let mut dial = RotaryDial::new(100, 50);
+    let out = actions
+        .iter()
+        .inspect(|a| print!("{:?}", a))
+        .map(|a| dial.zeros(a))
+        .inspect(|a| println!(" = {a}"))
+        .sum::<Steps>();
+    println!("Part 2: {:?}", out);
+    // assert_eq!(out, 969);
     Ok(())
 }
 
@@ -82,8 +91,18 @@ impl RotaryDial {
     }
     fn turn(&mut self, act: &Action) -> Steps {
         self.needle = (self.needle + (act.turn as Steps) * act.steps) % self.perimeter;
-        self.needle += if self.needle < 0 { 100 } else { 0 };
         self.needle
+    }
+    fn zeros(&mut self, act: &Action) -> Steps {
+        let init = self.needle;
+        let n = self.turn(act);
+        print!(" {init} -> {n} ");
+        match (n, init.signum(), n.signum()) {
+            (0, _, _) => 1,
+            (_, -1, 1) => 1,
+            (_, 1, -1) => 1,
+            (_, _, _) => 0,
+        }
     }
 }
 
@@ -92,7 +111,27 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_add() {
+    fn test_zeros() {
+        let mut dial = RotaryDial::new(100, 50);
+
+        assert_eq!(
+            dial.zeros(&Action {
+                turn: Turn::Left,
+                steps: 1000,
+            }),
+            10
+        );
+        assert_eq!(
+            dial.zeros(&Action {
+                turn: Turn::Right,
+                steps: 950,
+            }),
+            10
+        );
+    }
+
+    #[test]
+    fn test_turn() {
         let mut dial = RotaryDial::new(100, 50);
 
         assert_eq!(
