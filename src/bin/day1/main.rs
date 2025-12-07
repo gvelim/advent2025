@@ -108,7 +108,7 @@ impl RotaryDial {
         let new = self.cursor;
         let spanned = last.abs_diff(new) >= self.perimeter as u16;
 
-        print!(" {last} -> {} -> {new} ", act.steps);
+        println!(" {last} -> {} -> {new} ", act.steps);
         match (new, last.signum(), new.signum()) {
             // we've ended up on zero going over 0..* cycles
             (0, _, _) if spanned => (last.abs() + act.steps) / perimeter,
@@ -146,6 +146,16 @@ mod test {
             steps: 1000,
         });
         assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
+        res = dial.zeros(&Action {
+            turn: Turn::Right,
+            steps: 1,
+        });
+        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
+        res = dial.zeros(&Action {
+            turn: Turn::Left,
+            steps: 2,
+        });
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
     }
 
     #[test]
