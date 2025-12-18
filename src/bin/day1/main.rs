@@ -9,15 +9,15 @@ fn main() -> Result<(), MyError> {
         .map(|action| action.parse::<Action>())
         .collect::<Result<Vec<_>, _>>()?;
 
-    let out = actions
-        .iter()
-        .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.turn(a))
-        .inspect(|a| println!(" = {a}"))
-        .filter(|a| *a == 0)
-        .count();
-    println!("Part 1: {:?}", out);
-    // Expected: 969
+    // let out = actions
+    //     .iter()
+    //     .inspect(|a| print!("{:?}", a))
+    //     .map(|a| dial.turn(a))
+    //     .inspect(|a| println!(" = {a}"))
+    //     .filter(|a| *a == 0)
+    //     .count();
+    // println!("Part 1: {:?}", out);
+    // // Expected: 969
 
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
@@ -106,7 +106,7 @@ impl RotaryDial {
         self.turn(act);
 
         let new = self.cursor;
-        let z_rounds = (last + act.turn as Steps * act.steps).abs() / perimeter;
+        let z_rounds = act.steps / perimeter;
 
         print!(
             " {last} -> {} -> {new} (rounds: {z_rounds})",
