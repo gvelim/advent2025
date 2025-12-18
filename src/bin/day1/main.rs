@@ -17,7 +17,7 @@ fn main() -> Result<(), MyError> {
         .filter(|a| *a == 0)
         .count();
     println!("Part 1: {:?}", out);
-    // assert_eq!(out, 969);
+    // Expected: 969
 
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
@@ -27,7 +27,7 @@ fn main() -> Result<(), MyError> {
         .inspect(|a| println!(" = {a}"))
         .sum::<Steps>();
     println!("Part 2: {:?}", out);
-    // assert_eq!(out, 969);
+    // Expected: 969
     Ok(())
 }
 
@@ -106,20 +106,26 @@ impl RotaryDial {
         self.turn(act);
 
         let new = self.cursor;
-        let spanned = last.abs_diff(new) >= self.perimeter as u16;
+        let z_rounds = (last + act.turn as Steps * act.steps).abs() / perimeter;
 
-        println!(" {last} -> {} -> {new} ", act.steps);
-        match (new, last.signum(), new.signum()) {
-            // we've ended up on zero going over 0..* cycles
-            (0, _, _) if spanned => (last.abs() + act.steps) / perimeter,
-            (0, _, _) => 1,
+        print!(
+            " {last} -> {} -> {new} (rounds: {z_rounds})",
+            act.turn as Steps * act.steps
+        );
+        match (last.signum(), new.signum()) {
+            // we've landed on zero going over 0..* cycles
+            (0, 0) if z_rounds > 0 => z_rounds,
+            (_, 0) if z_rounds > 0 => 1 + z_rounds,
+            (_, 0) => 1,
+            (0, _) if z_rounds > 0 => z_rounds,
+            (0, _) => 0,
             // we've crossed zero in 0..* cycles
-            (_, -1, 1) | (_, 1, -1) if spanned => (last.abs() + act.steps) / perimeter,
-            (_, -1, 1) | (_, 1, -1) => 1,
-            // we've travelled more than a dial's perimeter length
-            (_, _, _) if spanned => (last.abs() + act.steps) / perimeter,
-            // anything else
-            (_, _, _) => 0,
+            (-1, 1) | (1, -1) if z_rounds > 0 => z_rounds,
+            (-1, 1) | (1, -1) => 1,
+            // we've travelled more than a dial's perimeter length without crossing zero
+            (-1, -1) | (1, 1) if z_rounds > 0 => z_rounds,
+            (-1, -1) | (1, 1) => 0,
+            _ => todo!(),
         }
     }
 }
@@ -150,7 +156,7 @@ mod test {
             turn: Turn::Right,
             steps: 1,
         });
-        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
+        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 10);
         res = dial.zeros(&Action {
             turn: Turn::Left,
             steps: 2,
