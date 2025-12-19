@@ -9,15 +9,16 @@ fn main() -> Result<(), MyError> {
         .map(|action| action.parse::<Action>())
         .collect::<Result<Vec<_>, _>>()?;
 
-    // let out = actions
-    //     .iter()
-    //     .inspect(|a| print!("{:?}", a))
-    //     .map(|a| dial.turn(a))
-    //     .inspect(|a| println!(" = {a}"))
-    //     .filter(|a| *a == 0)
-    //     .count();
-    // println!("Part 1: {:?}", out);
-    // // Expected: 969
+    let out = actions
+        .iter()
+        .inspect(|a| print!("{:?}", a))
+        .map(|a| dial.turn(a))
+        .inspect(|a| println!(" = {a}"))
+        .filter(|a| *a == 0)
+        .count();
+    println!("Part 1: {:?}", out);
+    assert_eq!(out, 969);
+    // Expected: 969
 
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
@@ -27,7 +28,7 @@ fn main() -> Result<(), MyError> {
         .inspect(|a| println!(" = {a}"))
         .sum::<Steps>();
     println!("Part 2: {:?}", out);
-    // Expected: 969
+
     Ok(())
 }
 
@@ -106,16 +107,17 @@ impl RotaryDial {
         self.turn(act);
 
         let new = self.cursor;
-        let z_rounds = act.steps / perimeter;
+        let z_rounds = (last + act.turn as Steps * act.steps).abs() / perimeter;
 
         print!(
-            " {last} -> {} -> {new} (rounds: {z_rounds})",
-            act.turn as Steps * act.steps
+            " {last} -> {} -> {}/{new} (rounds: {z_rounds})",
+            act.turn as Steps * act.steps,
+            self.needle
         );
         match (last.signum(), new.signum()) {
             // we've landed on zero going over 0..* cycles
             (0, 0) if z_rounds > 0 => z_rounds,
-            (_, 0) if z_rounds > 0 => 1 + z_rounds,
+            (_, 0) if z_rounds > 0 => z_rounds,
             (_, 0) => 1,
             (0, _) if z_rounds > 0 => z_rounds,
             (0, _) => 0,
@@ -136,32 +138,41 @@ mod test {
 
     #[test]
     fn test_zeros() {
-        let mut dial = RotaryDial::new(100, 50);
-        let mut res = dial.zeros(&Action {
-            turn: Turn::Left,
-            steps: 1000,
-        });
-        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
-        res = dial.zeros(&Action {
-            turn: Turn::Right,
-            steps: 950,
-        });
-        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
-        res = dial.zeros(&Action {
-            turn: Turn::Right,
-            steps: 1000,
-        });
-        assert_eq!(res, 10, "got:{} - expected:{}\n", res, 10);
-        res = dial.zeros(&Action {
-            turn: Turn::Right,
-            steps: 1,
-        });
-        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 10);
-        res = dial.zeros(&Action {
-            turn: Turn::Left,
-            steps: 2,
-        });
+        let count_zeros = |start, turn, steps| -> Steps {
+            let mut dial = RotaryDial::new(100, start);
+            dial.zeros(&Action { turn, steps })
+        };
+
+        // 10 -> 10 = 20, 0
+        let mut res = count_zeros(10, Turn::Right, 10);
+        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
+        // 10 -> 90 = 0, 1
+        res = count_zeros(10, Turn::Right, 90);
         assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 10 -> 190 = 0, 2
+        res = count_zeros(10, Turn::Right, 190);
+        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
+        // 10 -> 195 = 0, 2
+        res = count_zeros(10, Turn::Right, 195);
+        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
+        // 10 -> 110 = 20, 1
+        res = count_zeros(10, Turn::Right, 110);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 10 <- 10 = 0, 1
+        res = count_zeros(10, Turn::Left, 10);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 10 <- 90 = 80, 1
+        res = count_zeros(10, Turn::Left, 90);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 10 <- 190 = 20, 2
+        res = count_zeros(10, Turn::Left, 190);
+        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
+        // 10 <- 110 = 0, 2
+        res = count_zeros(10, Turn::Left, 110);
+        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
+        // 10 <- 115 = 0, 2
+        res = count_zeros(10, Turn::Left, 115);
+        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
     }
 
     #[test]
