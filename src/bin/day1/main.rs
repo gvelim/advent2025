@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Div, str::FromStr};
 use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
@@ -107,7 +107,9 @@ impl RotaryDial {
         self.turn(act);
 
         let new = self.cursor;
-        let z_rounds = (last + act.turn as Steps * act.steps).abs() / perimeter;
+        let z_rounds = (last + act.turn as Steps * act.steps - 1)
+            .abs()
+            .div(perimeter);
 
         print!(
             " {last} -> {} -> {}/{new} (rounds: {z_rounds})",
@@ -122,7 +124,7 @@ impl RotaryDial {
             (0, _) if z_rounds > 0 => z_rounds,
             (0, _) => 0,
             // we've crossed zero in 0..* cycles
-            (-1, 1) | (1, -1) if z_rounds > 0 => z_rounds,
+            (-1, 1) | (1, -1) if z_rounds > 0 => 1 + z_rounds,
             (-1, 1) | (1, -1) => 1,
             // we've travelled more than a dial's perimeter length without crossing zero
             (-1, -1) | (1, 1) if z_rounds > 0 => z_rounds,
