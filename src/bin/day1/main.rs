@@ -1,4 +1,4 @@
-use std::{ops::Div, str::FromStr};
+use std::str::FromStr;
 use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
@@ -8,17 +8,16 @@ fn main() -> Result<(), MyError> {
         .map(|action| action.parse::<Action>())
         .collect::<Result<Vec<_>, _>>()?;
 
-    // let mut dial = RotaryDial::new(100, 50);
-    // let out = actions
-    //     .iter()
-    //     .inspect(|a| print!("{:?}", a))
-    //     .map(|a| dial.turn(a))
-    //     .inspect(|a| println!(" = {a}"))
-    //     .filter(|a| *a == 0)
-    //     .count();
-    // println!("Part 1: {:?}", out);
-    // assert_eq!(out, 969);
-    // // Expected: 969
+    let mut dial = RotaryDial::new(100, 50);
+    let out = actions
+        .iter()
+        .inspect(|a| print!("{:?}", a))
+        .map(|a| dial.turn(a))
+        .inspect(|a| println!(" = {a}"))
+        .filter(|a| *a == 0)
+        .count();
+    println!("Part 1: {:?}", out);
+    assert_eq!(out, 969);
 
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
@@ -28,6 +27,7 @@ fn main() -> Result<(), MyError> {
         .inspect(|a| println!(" = {a}"))
         .sum::<Steps>();
     println!("Part 2: {:?}", out);
+    assert_eq!(out, 5887);
 
     Ok(())
 }
@@ -104,25 +104,35 @@ impl RotaryDial {
             ..
         } = *self;
 
-        self.turn(act);
-        let new = self.cursor;
-        let z_cross_range = match (act.turn) {
+        let residual_steps = act.steps % perimeter;
+        let x_zone = match act.turn {
+            Turn::Left | Turn::Right if last == 0 => perimeter,
             Turn::Left => last,
             Turn::Right => perimeter - last,
         };
-        let res = act.steps / perimeter
-            + if act.steps % perimeter >= z_cross_range {
-                1
-            } else {
-                0
-            };
+
+        // Calculate zero crossings based on current state BEFORE turning
+        //
+        // total zero crossings = full circles + has_residual_steps_crossed()
+        // full circles = steps / perimeter, i.e. 130 / 100 = 1
+        // residual_steps = steps % perimeter, i.e. 130 % 100 = 30
+        // crossing_zone (x_zone) is
+        // - Right: perimeter - residual steps, e.g 10 -> 130, x_zone >= 90
+        // - Left: residual steps, e.g. e.g 10 -> 130, x_zone <= 10
+        //
+        // insight: you cannot cross zero if "residual_steps" < "x_zone"
+        //
+        let res = act.steps / perimeter + if residual_steps >= x_zone { 1 } else { 0 };
+
+        self.turn(act);
+        let _new = self.needle;
+
         println!(
-            " {last} {} {} -> {new} (r:{}, %:{}, d:{}) = {res}",
+            " {last} {} {} -> {_new} (r:{}, %:{}, d:{x_zone})",
             if act.turn == Turn::Left { "<-" } else { "->" },
             act.steps,
             act.steps / perimeter,
-            act.steps % perimeter,
-            perimeter - last
+            act.steps % perimeter
         );
         res
     }
@@ -175,6 +185,9 @@ mod test {
         // 76 <- 46/46 -> 30/30
         res = count_zeros(76, Turn::Left, 46);
         assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
+        // 0 <- 305 -> 95 (r:3, %:5, d:0) = 4
+        res = count_zeros(0, Turn::Left, 305);
+        assert_eq!(res, 3, "got:{} - expected:{}\n", res, 3);
     }
 
     #[test]
