@@ -126,7 +126,7 @@ impl RotaryDial {
 
         self.turn(act);
         print!(
-            " {last} {} {} => {} (r:{}, %:{}, d:{x_zone})",
+            " {last} {} {} => {} (c:{}, %:{}, d:{x_zone})",
             if act.turn == Turn::Left { "<-" } else { "->" },
             act.steps,
             self.needle,
