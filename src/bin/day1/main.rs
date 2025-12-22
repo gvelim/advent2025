@@ -22,7 +22,7 @@ fn main() -> Result<(), MyError> {
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
         .iter()
-        .inspect(|a| print!("{:?}", a))
+        // .inspect(|a| print!("{:?}", a))
         .map(|a| dial.zeros(a))
         .inspect(|a| println!(" = {a}"))
         .sum::<Steps>();
@@ -125,12 +125,11 @@ impl RotaryDial {
         let res = act.steps / perimeter + if residual_steps >= x_zone { 1 } else { 0 };
 
         self.turn(act);
-        let _new = self.needle;
-
-        println!(
-            " {last} {} {} -> {_new} (r:{}, %:{}, d:{x_zone})",
+        print!(
+            " {last} {} {} => {} (r:{}, %:{}, d:{x_zone})",
             if act.turn == Turn::Left { "<-" } else { "->" },
             act.steps,
+            self.needle,
             act.steps / perimeter,
             act.steps % perimeter
         );
