@@ -103,31 +103,48 @@ impl RotaryDial {
             cursor: last,
             ..
         } = *self;
+        // Extract full perimeter rounds and create delta action
+        let steps = (act.turn as Steps * act.steps).abs();
+        let total_steps = (last.abs() + steps).abs();
+        let z_rounds = total_steps.div(perimeter);
+        let delta_steps = steps % perimeter;
 
-        self.turn(act);
+        let delta_action = Action {
+            turn: act.turn,
+            steps: delta_steps,
+        };
 
+        // Only turn the delta amount
+        self.turn(&delta_action);
         let new = self.cursor;
-        let z_rounds = (last + act.turn as Steps * act.steps - 1)
-            .abs()
-            .div(perimeter);
 
-        print!(
-            " {last} -> {} -> {}/{new} (rounds: {z_rounds})",
-            act.turn as Steps * act.steps,
+        println!(
+            " {last} {} {delta_steps}/{steps} -> {new}/{} (rounds: {z_rounds})",
+            if delta_action.turn == Turn::Left {
+                "<-"
+            } else {
+                "->"
+            },
             self.needle
         );
         match (last.signum(), new.signum()) {
             // we've landed on zero going over 0..* cycles
-            (0, 0) if z_rounds > 0 => z_rounds,
-            (_, 0) if z_rounds > 0 => z_rounds,
+            (0, 0) => z_rounds,
+            (_, 0) if total_steps > perimeter && total_steps % perimeter != 0 => z_rounds + 1,
+            (_, 0) if total_steps > perimeter && total_steps % perimeter == 0 => z_rounds,
             (_, 0) => 1,
-            (0, _) if z_rounds > 0 => z_rounds,
-            (0, _) => 0,
+            (0, _) => z_rounds,
             // we've crossed zero in 0..* cycles
-            (-1, 1) | (1, -1) if z_rounds > 0 => 1 + z_rounds,
+            (-1, 1) | (1, -1) if total_steps > perimeter && total_steps % perimeter == 0 => {
+                z_rounds
+            }
+            (-1, 1) | (1, -1) if total_steps > perimeter && total_steps % perimeter != 0 => {
+                z_rounds + 1
+            }
             (-1, 1) | (1, -1) => 1,
-            // we've travelled more than a dial's perimeter length without crossing zero
-            (-1, -1) | (1, 1) if z_rounds > 0 => z_rounds,
+            // we've travelled over the dial's perimeter length hence crossing zero
+            (-1, -1) | (1, 1) if total_steps > perimeter => z_rounds,
+            // we've travelled under the dial's perimeter length hence not crossing zero
             (-1, -1) | (1, 1) => 0,
             _ => todo!(),
         }
