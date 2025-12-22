@@ -3,22 +3,22 @@ use thiserror::Error;
 
 fn main() -> Result<(), MyError> {
     let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
-    let mut dial = RotaryDial::new(100, 50);
     let actions = input
         .lines()
         .map(|action| action.parse::<Action>())
         .collect::<Result<Vec<_>, _>>()?;
 
-    let out = actions
-        .iter()
-        .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.turn(a))
-        .inspect(|a| println!(" = {a}"))
-        .filter(|a| *a == 0)
-        .count();
-    println!("Part 1: {:?}", out);
-    assert_eq!(out, 969);
-    // Expected: 969
+    // let mut dial = RotaryDial::new(100, 50);
+    // let out = actions
+    //     .iter()
+    //     .inspect(|a| print!("{:?}", a))
+    //     .map(|a| dial.turn(a))
+    //     .inspect(|a| println!(" = {a}"))
+    //     .filter(|a| *a == 0)
+    //     .count();
+    // println!("Part 1: {:?}", out);
+    // assert_eq!(out, 969);
+    // // Expected: 969
 
     let mut dial = RotaryDial::new(100, 50);
     let out = actions
@@ -105,7 +105,7 @@ impl RotaryDial {
         } = *self;
         // Extract full perimeter rounds and create delta action
         let steps = (act.turn as Steps * act.steps).abs();
-        let total_steps = (last.abs() + steps).abs();
+        let total_steps = (last + steps).abs();
         let z_rounds = total_steps.div(perimeter);
         let delta_steps = steps % perimeter;
 
@@ -119,7 +119,7 @@ impl RotaryDial {
         let new = self.cursor;
 
         println!(
-            " {last} {} {delta_steps}/{steps} -> {new}/{} (rounds: {z_rounds})",
+            " {last} {} {delta_steps}/{steps} -> {new}/{} (rounds: {z_rounds}, total_steps:{total_steps})",
             if delta_action.turn == Turn::Left {
                 "<-"
             } else {
@@ -131,7 +131,7 @@ impl RotaryDial {
             // we've landed on zero going over 0..* cycles
             (0, 0) => z_rounds,
             (_, 0) if total_steps > perimeter && total_steps % perimeter != 0 => z_rounds + 1,
-            (_, 0) if total_steps > perimeter && total_steps % perimeter == 0 => z_rounds,
+            (_, 0) if total_steps >= perimeter && total_steps % perimeter == 0 => z_rounds,
             (_, 0) => 1,
             (0, _) => z_rounds,
             // we've crossed zero in 0..* cycles
@@ -192,6 +192,9 @@ mod test {
         // 10 <- 115 = 0, 2
         res = count_zeros(10, Turn::Left, 115);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
+        // -86 -> 86/86 -> 0/0 (rounds: 1) = 2
+        res = count_zeros(-86, Turn::Right, 86);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
     }
 
     #[test]
