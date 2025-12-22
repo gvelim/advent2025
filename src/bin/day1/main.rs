@@ -100,54 +100,31 @@ impl RotaryDial {
     fn zeros(&mut self, act: &Action) -> Steps {
         let RotaryDial {
             perimeter,
-            cursor: last,
+            needle: last,
             ..
         } = *self;
-        // Extract full perimeter rounds and create delta action
-        let steps = (act.turn as Steps * act.steps).abs();
-        let total_steps = (last + steps).abs();
-        let z_rounds = total_steps.div(perimeter);
-        let delta_steps = steps % perimeter;
 
-        let delta_action = Action {
-            turn: act.turn,
-            steps: delta_steps,
-        };
-
-        // Only turn the delta amount
-        self.turn(&delta_action);
+        self.turn(act);
         let new = self.cursor;
-
-        println!(
-            " {last} {} {delta_steps}/{steps} -> {new}/{} (rounds: {z_rounds}, total_steps:{total_steps})",
-            if delta_action.turn == Turn::Left {
-                "<-"
+        let z_cross_range = match (act.turn) {
+            Turn::Left => last,
+            Turn::Right => perimeter - last,
+        };
+        let res = act.steps / perimeter
+            + if act.steps % perimeter >= z_cross_range {
+                1
             } else {
-                "->"
-            },
-            self.needle
+                0
+            };
+        println!(
+            " {last} {} {} -> {new} (r:{}, %:{}, d:{}) = {res}",
+            if act.turn == Turn::Left { "<-" } else { "->" },
+            act.steps,
+            act.steps / perimeter,
+            act.steps % perimeter,
+            perimeter - last
         );
-        match (last.signum(), new.signum()) {
-            // we've landed on zero going over 0..* cycles
-            (0, 0) => z_rounds,
-            (_, 0) if total_steps > perimeter && total_steps % perimeter != 0 => z_rounds + 1,
-            (_, 0) if total_steps >= perimeter && total_steps % perimeter == 0 => z_rounds,
-            (_, 0) => 1,
-            (0, _) => z_rounds,
-            // we've crossed zero in 0..* cycles
-            (-1, 1) | (1, -1) if total_steps > perimeter && total_steps % perimeter == 0 => {
-                z_rounds
-            }
-            (-1, 1) | (1, -1) if total_steps > perimeter && total_steps % perimeter != 0 => {
-                z_rounds + 1
-            }
-            (-1, 1) | (1, -1) => 1,
-            // we've travelled over the dial's perimeter length hence crossing zero
-            (-1, -1) | (1, 1) if total_steps > perimeter => z_rounds,
-            // we've travelled under the dial's perimeter length hence not crossing zero
-            (-1, -1) | (1, 1) => 0,
-            _ => todo!(),
-        }
+        res
     }
 }
 
@@ -162,39 +139,42 @@ mod test {
             dial.zeros(&Action { turn, steps })
         };
 
-        // 10 -> 10 = 20, 0
-        let mut res = count_zeros(10, Turn::Right, 10);
+        // 50 -> 25 = 75, 0
+        let mut res = count_zeros(50, Turn::Right, 25);
         assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
-        // 10 -> 90 = 0, 1
-        res = count_zeros(10, Turn::Right, 90);
+        // 50 -> 50 = 0, 1
+        res = count_zeros(50, Turn::Right, 50);
         assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 10 -> 190 = 0, 2
-        res = count_zeros(10, Turn::Right, 190);
+        // 50 -> 100 = 50, 1
+        res = count_zeros(50, Turn::Right, 100);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 50 -> 150 = 0, 2
+        res = count_zeros(50, Turn::Right, 150);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 10 -> 195 = 0, 2
-        res = count_zeros(10, Turn::Right, 195);
+        // 50 -> 75 = 15, 1
+        res = count_zeros(50, Turn::Right, 75);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 50 -> 175 = 15, 2
+        res = count_zeros(50, Turn::Right, 175);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 10 -> 110 = 20, 1
-        res = count_zeros(10, Turn::Right, 110);
+        // 50 <- 50 = 0, 1
+        res = count_zeros(50, Turn::Left, 50);
         assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 10 <- 10 = 0, 1
-        res = count_zeros(10, Turn::Left, 10);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 10 <- 90 = 80, 1
-        res = count_zeros(10, Turn::Left, 90);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 10 <- 190 = 20, 2
-        res = count_zeros(10, Turn::Left, 190);
+        // 50 <- 150 = 0, 2
+        res = count_zeros(50, Turn::Left, 150);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 10 <- 110 = 0, 2
+        // 50 <- 75 = 15, 1
+        res = count_zeros(50, Turn::Left, 75);
+        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 50 <- 175 = 15, 2
         res = count_zeros(10, Turn::Left, 110);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
         // 10 <- 115 = 0, 2
         res = count_zeros(10, Turn::Left, 115);
         assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // -86 -> 86/86 -> 0/0 (rounds: 1) = 2
-        res = count_zeros(-86, Turn::Right, 86);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
+        // 76 <- 46/46 -> 30/30
+        res = count_zeros(76, Turn::Left, 46);
+        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
     }
 
     #[test]
