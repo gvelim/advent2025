@@ -108,46 +108,25 @@ mod test {
         let count_zeros = |start, turn, steps| -> Steps {
             RotaryDial::new(100, start).count_zero_crossings(&Action { turn, steps })
         };
+        let tests = [
+            (count_zeros(50, Turn::Right, 25), 0),
+            (count_zeros(50, Turn::Right, 50), 1),
+            (count_zeros(50, Turn::Right, 100), 1),
+            (count_zeros(50, Turn::Right, 150), 2),
+            (count_zeros(50, Turn::Right, 75), 1),
+            (count_zeros(50, Turn::Right, 175), 2),
+            (count_zeros(50, Turn::Left, 50), 1),
+            (count_zeros(50, Turn::Left, 150), 2),
+            (count_zeros(50, Turn::Left, 75), 1),
+            (count_zeros(10, Turn::Left, 110), 2),
+            (count_zeros(10, Turn::Left, 215), 3),
+            (count_zeros(76, Turn::Left, 46), 0),
+            (count_zeros(0, Turn::Left, 305), 3),
+        ];
 
-        // 50 -> 25 = 75, 0
-        let mut res = count_zeros(50, Turn::Right, 25);
-        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
-        // 50 -> 50 = 0, 1
-        res = count_zeros(50, Turn::Right, 50);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 100 = 50, 1
-        res = count_zeros(50, Turn::Right, 100);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 150 = 0, 2
-        res = count_zeros(50, Turn::Right, 150);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 -> 75 = 15, 1
-        res = count_zeros(50, Turn::Right, 75);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 175 = 15, 2
-        res = count_zeros(50, Turn::Right, 175);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 <- 50 = 0, 1
-        res = count_zeros(50, Turn::Left, 50);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 <- 150 = 0, 2
-        res = count_zeros(50, Turn::Left, 150);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 <- 75 = 15, 1
-        res = count_zeros(50, Turn::Left, 75);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 <- 175 = 15, 2
-        res = count_zeros(10, Turn::Left, 110);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 10 <- 115 = 0, 2
-        res = count_zeros(10, Turn::Left, 115);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 76 <- 46/46 -> 30/30
-        res = count_zeros(76, Turn::Left, 46);
-        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
-        // 0 <- 305 -> 95 (r:3, %:5, d:0) = 4
-        res = count_zeros(0, Turn::Left, 305);
-        assert_eq!(res, 3, "got:{} - expected:{}\n", res, 3);
+        for (res, exp) in tests {
+            assert_eq!(res, exp, "Got {res}, expected {exp}")
+        }
     }
 
     #[test]
