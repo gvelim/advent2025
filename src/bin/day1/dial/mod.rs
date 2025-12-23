@@ -149,29 +149,18 @@ mod test {
 
     #[test]
     fn test_turn() {
-        let mut dial = RotaryDial::new(100, 50);
+        let new_action = |turn, steps| -> Action { Action { turn, steps } };
 
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Left,
-                steps: 68,
-            }),
-            82
-        );
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Left,
-                steps: 30,
-            }),
-            52
-        );
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Right,
-                steps: 48,
-            }),
-            0
-        );
+        let mut dial = RotaryDial::new(100, 50);
+        let turns = [
+            new_action(Turn::Left, 68),
+            new_action(Turn::Left, 30),
+            new_action(Turn::Right, 48),
+        ];
+
+        assert_eq!(dial.turn(&turns[0]), 82);
+        assert_eq!(dial.turn(&turns[1]), 52);
+        assert_eq!(dial.turn(&turns[2]), 0);
     }
 
     #[test]
