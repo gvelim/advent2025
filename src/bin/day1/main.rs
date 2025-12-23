@@ -1,5 +1,6 @@
-use std::str::FromStr;
-use thiserror::Error;
+mod dial;
+
+use dial::{Action, MyError, RotaryDial};
 
 fn main() -> Result<(), MyError> {
     let input = std::fs::read_to_string("src/bin/day1/input.txt").expect("file not found");
@@ -9,223 +10,22 @@ fn main() -> Result<(), MyError> {
         .collect::<Result<Vec<_>, _>>()?;
 
     let mut dial = RotaryDial::new(100, 50);
-    let out = actions
-        .iter()
-        .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.turn(a))
-        .inspect(|a| println!(" = {a}"))
-        .filter(|a| *a == 0)
-        .count();
-    println!("Part 1: {:?}", out);
-    assert_eq!(out, 969);
+    let (zero_crossing, zero_count) =
+        actions
+            .iter()
+            .fold((0, 0), |(crossing_count, zero_count), action| {
+                let crossings = dial.count_zero_crossings(action);
+                let needle = dial.turn(action);
+                (
+                    crossing_count + crossings,
+                    zero_count + if needle == 0 { 1 } else { 0 },
+                )
+            });
 
-    let mut dial = RotaryDial::new(100, 50);
-    let out = actions
-        .iter()
-        // .inspect(|a| print!("{:?}", a))
-        .map(|a| dial.zeros(a))
-        .inspect(|a| println!(" = {a}"))
-        .sum::<Steps>();
-    println!("Part 2: {:?}", out);
-    assert_eq!(out, 5887);
+    println!("Part 1: {:?}", zero_count);
+    assert_eq!(zero_count, 969);
+    println!("Part 2: {:?}", zero_crossing);
+    assert_eq!(zero_crossing, 5887);
 
     Ok(())
-}
-
-type Steps = i16;
-
-#[derive(Debug, Error, PartialEq)]
-enum MyError {
-    #[error("Cannot parse turn letter")]
-    InvalidTurn = 0,
-    #[error("Cannot parse step count")]
-    InvalidStep = 1,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum Turn {
-    Left = -1,
-    Right = 1,
-}
-
-#[derive(Debug, PartialEq)]
-struct Action {
-    turn: Turn,
-    steps: Steps,
-}
-
-impl FromStr for Turn {
-    type Err = MyError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "L" => Ok(Turn::Left),
-            "R" => Ok(Turn::Right),
-            _ => Err(MyError::InvalidTurn),
-        }
-    }
-}
-
-impl FromStr for Action {
-    type Err = MyError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Action {
-            turn: s[..1].parse::<Turn>()?,
-            steps: Steps::from_str(&s[1..]).map_err(|_| MyError::InvalidStep)?,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct RotaryDial {
-    perimeter: Steps,
-    cursor: Steps,
-    needle: Steps,
-}
-
-impl RotaryDial {
-    fn new(perimeter: Steps, start: Steps) -> RotaryDial {
-        RotaryDial {
-            perimeter,
-            cursor: start,
-            needle: start,
-        }
-    }
-    fn turn(&mut self, act: &Action) -> Steps {
-        self.cursor = (self.cursor + (act.turn as Steps) * act.steps) % self.perimeter;
-        self.needle = self.cursor + if self.cursor < 0 { 100 } else { 0 };
-        self.needle
-    }
-    fn zeros(&mut self, act: &Action) -> Steps {
-        let RotaryDial {
-            perimeter,
-            needle: last,
-            ..
-        } = *self;
-
-        let residual_steps = act.steps % perimeter;
-        let x_zone = match act.turn {
-            Turn::Left | Turn::Right if last == 0 => perimeter,
-            Turn::Left => last,
-            Turn::Right => perimeter - last,
-        };
-
-        // Calculate zero crossings based on current state BEFORE turning
-        //
-        // total zero crossings = full circles + has_residual_steps_crossed()
-        // full circles = steps / perimeter, i.e. 130 / 100 = 1
-        // residual_steps = steps % perimeter, i.e. 130 % 100 = 30
-        // crossing_zone (x_zone) is
-        // - Right: perimeter - residual steps, e.g 10 -> 130, x_zone >= 90
-        // - Left: residual steps, e.g. e.g 10 -> 130, x_zone <= 10
-        //
-        // insight: you cannot cross zero if "residual_steps" < "x_zone"
-        //
-        let res = act.steps / perimeter + if residual_steps >= x_zone { 1 } else { 0 };
-
-        self.turn(act);
-        print!(
-            " {last} {} {} => {} (c:{}, %:{}, d:{x_zone})",
-            if act.turn == Turn::Left { "<-" } else { "->" },
-            act.steps,
-            self.needle,
-            act.steps / perimeter,
-            act.steps % perimeter
-        );
-        res
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_zeros() {
-        let count_zeros = |start, turn, steps| -> Steps {
-            let mut dial = RotaryDial::new(100, start);
-            dial.zeros(&Action { turn, steps })
-        };
-
-        // 50 -> 25 = 75, 0
-        let mut res = count_zeros(50, Turn::Right, 25);
-        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
-        // 50 -> 50 = 0, 1
-        res = count_zeros(50, Turn::Right, 50);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 100 = 50, 1
-        res = count_zeros(50, Turn::Right, 100);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 150 = 0, 2
-        res = count_zeros(50, Turn::Right, 150);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 -> 75 = 15, 1
-        res = count_zeros(50, Turn::Right, 75);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 -> 175 = 15, 2
-        res = count_zeros(50, Turn::Right, 175);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 <- 50 = 0, 1
-        res = count_zeros(50, Turn::Left, 50);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 <- 150 = 0, 2
-        res = count_zeros(50, Turn::Left, 150);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 50 <- 75 = 15, 1
-        res = count_zeros(50, Turn::Left, 75);
-        assert_eq!(res, 1, "got:{} - expected:{}\n", res, 1);
-        // 50 <- 175 = 15, 2
-        res = count_zeros(10, Turn::Left, 110);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 10 <- 115 = 0, 2
-        res = count_zeros(10, Turn::Left, 115);
-        assert_eq!(res, 2, "got:{} - expected:{}\n", res, 2);
-        // 76 <- 46/46 -> 30/30
-        res = count_zeros(76, Turn::Left, 46);
-        assert_eq!(res, 0, "got:{} - expected:{}\n", res, 0);
-        // 0 <- 305 -> 95 (r:3, %:5, d:0) = 4
-        res = count_zeros(0, Turn::Left, 305);
-        assert_eq!(res, 3, "got:{} - expected:{}\n", res, 3);
-    }
-
-    #[test]
-    fn test_turn() {
-        let mut dial = RotaryDial::new(100, 50);
-
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Left,
-                steps: 68,
-            }),
-            82
-        );
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Left,
-                steps: 30,
-            }),
-            52
-        );
-        assert_eq!(
-            dial.turn(&Action {
-                turn: Turn::Right,
-                steps: 48,
-            }),
-            0
-        );
-    }
-
-    #[test]
-    fn test_parse_input() {
-        assert_eq!(
-            "L68".parse::<Action>(),
-            Ok(Action {
-                turn: Turn::Left,
-                steps: 68
-            })
-        );
-        assert_eq!("E68".parse::<Action>(), Err(MyError::InvalidTurn));
-        assert_eq!("LA8".parse::<Action>(), Err(MyError::InvalidStep));
-    }
 }
