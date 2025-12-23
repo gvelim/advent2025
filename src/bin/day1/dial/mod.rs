@@ -31,10 +31,13 @@ impl RotaryDial {
         }
     }
 
-    pub fn turn(&mut self, act: &Action) -> Steps {
+    // we could take a mutable reference
+    // but instead we consume self and return it
+    // which is a more of a functional paradigm
+    pub fn turn(mut self, act: &Action) -> Self {
         self.cursor = (self.cursor + (act.turn as Steps) * act.steps) % self.perimeter;
         self.needle = self.cursor + if self.cursor < 0 { 100 } else { 0 };
-        self.needle
+        self
     }
 
     pub fn count_zero_crossings(&self, act: &Action) -> Steps {
@@ -153,14 +156,15 @@ mod test {
 
         let mut dial = RotaryDial::new(100, 50);
         let turns = [
-            new_action(Turn::Left, 68),
-            new_action(Turn::Left, 30),
-            new_action(Turn::Right, 48),
+            (new_action(Turn::Left, 68), 82),
+            (new_action(Turn::Left, 30), 52),
+            (new_action(Turn::Right, 48), 0),
         ];
 
-        assert_eq!(dial.turn(&turns[0]), 82);
-        assert_eq!(dial.turn(&turns[1]), 52);
-        assert_eq!(dial.turn(&turns[2]), 0);
+        for (act, res) in turns {
+            dial = dial.turn(&act);
+            assert_eq!(dial.needle, res);
+        }
     }
 
     #[test]
