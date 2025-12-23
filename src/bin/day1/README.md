@@ -88,6 +88,12 @@ The combination of modular arithmetic and normalization ensures:
 
 ```rust
 pub fn count_zero_crossings(&self, act: &Action) -> Steps {
+    let RotaryDial {
+        perimeter,
+        needle: last,
+        ..
+    } = *self;
+
     let residual_steps = act.steps % perimeter;
     let x_zone = match act.turn {
         Turn::Left | Turn::Right if last == 0 => perimeter,
