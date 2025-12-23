@@ -14,11 +14,9 @@ fn main() -> Result<(), MyError> {
         actions
             .iter()
             .fold((0, 0), |(crossing_count, zero_count), action| {
-                let crossings = dial.count_zero_crossings(action);
-                let needle = dial.turn(action);
                 (
-                    crossing_count + crossings,
-                    zero_count + if needle == 0 { 1 } else { 0 },
+                    crossing_count + dial.count_zero_crossings(action),
+                    zero_count + if dial.turn(action) == 0 { 1 } else { 0 },
                 )
             });
 
