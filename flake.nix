@@ -11,7 +11,7 @@
   outputs =
     { self, nixpkgs }:
     let
-      overrides = builtins.fromTOML (builtins.readFile (self + "/rust-toolchain.toml"));
+      overrides = fromTOML (builtins.readFile (self + "/rust-toolchain.toml"));
       # Function that takes a Nixpkgs package set and returns an attribute set
       # suitable for passing to pkgs.mkShell. The attribute set includes:
       # - packages: List of packages to include in the shell environment
@@ -34,14 +34,22 @@
 
           # ensure we get colour output
           alias ls='ls --color=auto'
-          # enable starship for branch and active SDKs
-          [ ! -f ~/.config/starship.toml ] && starship preset no-nerd-font -o ~/.config/starship.toml
-          eval "$(starship init bash)"
-          # acticate bash completions
-          source ${pkgs.bash-completion}/etc/profile.d/bash_completion.sh
 
-          echo "Welcome to the Advent2025 development environment!"
-          eval "$(hstr --show-bash-configuration)"
+          # direnv's `use flake` also evals this hook, but from a non-interactive
+          # bash. Exporting STARSHIP_SHELL=bash there breaks the prompt of the
+          # real shell (e.g. fish): fish's fish_prompt keeps being used, but
+          # `starship prompt` then emits bash-only \[ \] markers, which fish
+          # prints literally. Only set the prompt up in nix develop's shell.
+          if [[ $- == *i* ]]; then
+            # enable starship for branch and active SDKs
+            [ ! -f ~/.config/starship.toml ] && starship preset no-nerd-font -o ~/.config/starship.toml
+            eval "$(starship init bash)"
+            # acticate bash completions
+            source ${pkgs.bash-completion}/etc/profile.d/bash_completion.sh
+
+            echo "Welcome to the Advent2025 development environment!"
+            eval "$(hstr --show-bash-configuration)"
+          fi
           # zed .
         '';
 
